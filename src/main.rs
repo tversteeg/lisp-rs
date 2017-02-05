@@ -1,4 +1,9 @@
+#[macro_use] extern crate lazy_static;
+extern crate regex;
+extern crate readline;
+
 use std::io::{self, Write};
+use regex::Regex;
 
 struct Reader {
     counter: i32
@@ -14,7 +19,18 @@ impl Reader {
     }
 
     fn tokenizer(&mut self, line: &str) {
-
+        // [\s,]*               Whitespaces or commas, ignore this
+        // ~@                   Special characters ~@
+        // [\[\]{}()'`~^@]      Single special character
+        // "(?:\\.|[^\\"])*"    From the first : to the next : ignoring \:
+        // ;.*                  Sequences of comments ;, ignore this
+        // [^\s\[\]{}('"`,;)]*  Sequences of normal characters
+        lazy_static! {
+            static ref re:Regex = Regex::new(r#"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)"#).unwrap();
+        }
+        for cap in re.captures_iter(line) {
+            println!("Regex match: {}", &cap[0]);
+        }
     }
 
     fn read_form(&mut self) {
@@ -32,7 +48,7 @@ fn read_str(line: &str) -> Reader {
 }
 
 fn read(line: &str) {
-
+    read_str(line);
 }
 
 fn eval() {
@@ -56,13 +72,13 @@ fn main() {
         print!("Λ> ");
         io::stdout().flush().unwrap();
 
-        let mut line = String::new();
-        io::stdin().read_line(&mut line).expect("Failed to read line");
+        let input = readline::readline("").unwrap();
+        readline::add_history(&input.to_string());
 
-        if line == "exit\n" {
+        if input == "exit" {
             break;
         }
 
-        rep(&line.to_string());
+        rep(&input.to_string());
     }
 }

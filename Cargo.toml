@@ -4,3 +4,8 @@ version = "0.1.0"
 authors = ["Thomas Versteeg <thomasversteeg@gmx.com>"]
 
 [dependencies]
+regex = "*"
+lazy_static = "*"
+
+[dependencies.readline]
+git = "https://github.com/shaleh/rust-readline"
