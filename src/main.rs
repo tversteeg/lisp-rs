@@ -3,19 +3,30 @@ extern crate regex;
 extern crate readline;
 
 use std::io::{self, Write};
+use std::option::Option;
 use regex::Regex;
 
-struct Reader {
-    counter: i32
+struct Reader<'a> {
+    counter: usize,
+    tokens: Vec<&'a str>
 }
 
-impl Reader {
-    fn next(&mut self) {
-        self.counter += 1;
+impl<'a> Reader<'a> {
+    fn new() -> Reader<'a> {
+        Reader{
+            counter: 0,
+            tokens: Vec::new()
+        }
     }
 
-    fn peak(&mut self) {
+    fn next(&mut self) -> Option<&&str> {
+        self.counter += 1;
 
+        return self.tokens.get(self.counter - 1)
+    }
+
+    fn peak(&mut self) -> Option<&&str> {
+        return self.tokens.get(self.counter)
     }
 
     fn tokenizer(&mut self, line: &str) {
@@ -28,7 +39,9 @@ impl Reader {
         lazy_static! {
             static ref re:Regex = Regex::new(r#"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)"#).unwrap();
         }
+
         for cap in re.captures_iter(line) {
+            self.tokens.push(&cap[0]);
             println!("Regex match: {}", &cap[0]);
         }
     }
@@ -36,10 +49,18 @@ impl Reader {
     fn read_form(&mut self) {
 
     }
+
+    fn read_list(&mut self) {
+
+    }
+
+    fn read_atom(&mut self) {
+
+    }
 }
 
 fn read_str(line: &str) -> Reader {
-    let mut reader = Reader{counter: 0};
+    let mut reader = Reader::new();
 
     reader.tokenizer(line);
     reader.read_form();
