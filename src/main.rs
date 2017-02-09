@@ -22,14 +22,14 @@ impl<'a> Reader<'a> {
     fn next(&mut self) -> Option<&&str> {
         self.counter += 1;
 
-        return self.tokens.get(self.counter - 1)
+        self.tokens.get(self.counter - 1)
     }
 
     fn peak(&mut self) -> Option<&&str> {
-        return self.tokens.get(self.counter)
+        self.tokens.get(self.counter)
     }
 
-    fn tokenizer(&mut self, line: &str) {
+    fn tokenizer(&mut self, line: &'a str) {
         // [\s,]*               Whitespaces or commas, ignore this
         // ~@                   Special characters ~@
         // [\[\]{}()'`~^@]      Single special character
@@ -41,13 +41,19 @@ impl<'a> Reader<'a> {
         }
 
         for cap in re.captures_iter(line) {
-            self.tokens.push(&cap[0]);
-            println!("Regex match: {}", &cap[0]);
+            self.tokens.push(cap.get(1).unwrap().as_str());
+            println!("Regex match: {}", cap.get(1).unwrap().as_str());
         }
     }
 
     fn read_form(&mut self) {
+        let peak = self.peak();
 
+        match peak {
+            Some(&"(") => self.read_list(),
+            Some(_) => self.read_atom(),
+            None => println!("Error")
+        }
     }
 
     fn read_list(&mut self) {
@@ -65,7 +71,7 @@ fn read_str(line: &str) -> Reader {
     reader.tokenizer(line);
     reader.read_form();
 
-    return reader;
+    reader
 }
 
 fn read(line: &str) {
