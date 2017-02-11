@@ -19,14 +19,14 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn next(&mut self) -> Option<&&str> {
+    fn next(&mut self) -> &'a str {
         self.counter += 1;
 
-        self.tokens.get(self.counter - 1)
+        self.tokens.get(self.counter - 1).unwrap()
     }
 
-    fn peak(&mut self) -> Option<&&str> {
-        self.tokens.get(self.counter)
+    fn peak(&self) -> &'a str {
+        self.tokens.get(self.counter).unwrap()
     }
 
     fn tokenizer(&mut self, line: &'a str) {
@@ -46,14 +46,15 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn read_form(&mut self) {
+    fn read_form(&mut self) -> &'a str {
         let peak = self.peak();
 
         match peak {
-            Some(&"(") => self.read_list(),
-            Some(_) => self.read_atom(),
-            None => println!("Error")
+            "(" => self.read_list(),
+            _ => self.read_atom()
         }
+
+        peak
     }
 
     fn read_list(&mut self) {
