@@ -2,31 +2,49 @@
 extern crate regex;
 extern crate readline;
 
+use std::rc::Rc;
 use std::io::{self, Write};
 use std::option::Option;
 use regex::Regex;
 
+enum LType {
+    Nil,
+    True,
+    False,
+    Int(isize),
+    Symbol(String),
+    List(Vec<Rc<LType>>, Rc<LType>)
+}
+
 struct Reader<'a> {
-    counter: usize,
+    position: usize,
     tokens: Vec<&'a str>
 }
 
 impl<'a> Reader<'a> {
     fn new() -> Reader<'a> {
         Reader{
-            counter: 0,
+            position: 0,
             tokens: Vec::new()
         }
     }
 
-    fn next(&mut self) -> &'a str {
-        self.counter += 1;
+    fn next(&mut self) -> Option<&str> {
+        if self.position < self.tokens.len() {
+            self.position += 1;
 
-        self.tokens.get(self.counter - 1).unwrap()
+            Some(self.tokens.get(self.position - 1).unwrap())
+        } else {
+            None
+        }
     }
 
-    fn peak(&self) -> &'a str {
-        self.tokens.get(self.counter).unwrap()
+    fn peek(&self) -> Option<&str> {
+        if self.position < self.tokens.len() {
+            Some(self.tokens.get(self.position).unwrap())
+        } else {
+            None
+        }
     }
 
     fn tokenizer(&mut self, line: &'a str) {
@@ -37,28 +55,64 @@ impl<'a> Reader<'a> {
         // ;.*                  Sequences of comments ;, ignore this
         // [^\s\[\]{}('"`,;)]*  Sequences of normal characters
         lazy_static! {
-            static ref re:Regex = Regex::new(r#"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)"#).unwrap();
+            static ref RE:Regex = Regex::new(r#"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)"#).unwrap();
         }
 
-        for cap in re.captures_iter(line) {
+        for cap in RE.captures_iter(line) {
             self.tokens.push(cap.get(1).unwrap().as_str());
             println!("Regex match: {}", cap.get(1).unwrap().as_str());
         }
     }
 
-    fn read_form(&mut self) -> &'a str {
-        let peak = self.peak();
+    fn read_seq(&'a mut self, start: &str, end: &str) -> Result<Vec<Rc<LType>>, String> {
+        let token = self.next().unwrap();
 
-        match peak {
-            "(" => self.read_list(),
-            _ => self.read_atom()
+        let mut ast_vec: Vec<Rc<LType>> = vec![];
+        loop {
+            let otoken = self.peek();
+            if otoken.is_none() {
+                return Err(format!("Expected '{}', got EOF", end));
+            }
+            let token = otoken.unwrap();
+            if token == end {
+                break;
+            }
+
+            match self.read_form() {
+                Ok(lval) => ast_vec.push(Rc::new(lval)),
+                Err(err) => return Err(err)
+            }
         }
 
-        peak
+        self.next();
+
+        Ok(ast_vec)
     }
 
-    fn read_list(&mut self) {
+    fn read_form(&'a mut self) -> Result<LType, String> {
+        let token = self.peek().unwrap();
 
+        let first_char = token.chars().nth(0).unwrap();
+
+        match first_char {
+            '(' => {
+                self.read_list();
+            },
+            ')' => return Err("Found closing bracket".to_string()),
+
+            _ => {
+                self.read_atom();
+            }
+        }
+
+        Ok(LType::Symbol(token.to_string()))
+    }
+
+    fn read_list(&'a mut self) -> Result<LType, String> {
+        match self.read_seq("(", ")") {
+            Ok(seq) => Ok(LType::List(seq, Rc::new(LType::Nil))),
+            Err(e) => Err(e)
+        }
     }
 
     fn read_atom(&mut self) {
@@ -75,22 +129,22 @@ fn read_str(line: &str) -> Reader {
     reader
 }
 
-fn read(line: &str) {
+fn read(line: &str) -> &str {
     read_str(line);
+
+    line
 }
 
-fn eval() {
-
+fn eval(ast: &str) -> &str {
+    ast
 }
 
-fn print() {
-
+fn print(exp: &str) -> &str {
+    exp
 }
 
 fn rep(line: &str) {
-    read(line);
-    eval();
-    print();
+    print(eval(read(line)));
 }
 
 fn main() {
